@@ -288,6 +288,7 @@ function bar() {
 
     with pytest.raises(ValueError):
         chunks = list(str(i) for i in chunker.chunk(test_file))
+        assert chunks == []
     os.remove(test_file)
 
 def test_treesitter_chunker_parser_from_config_regex_error():
@@ -311,6 +312,7 @@ function bar() {
 
     with pytest.raises(ValueError):
         chunks = list(str(i) for i in chunker.chunk(test_file))
+        assert chunks == []
     os.remove(test_file)
 
 
