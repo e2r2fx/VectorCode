@@ -286,7 +286,7 @@ function bar() {
         test_file = tmp_file.name
 
 
-    with pytest.raises(ValueError):
+    with pytest.raises(Exception):
         chunks = list(str(i) for i in chunker.chunk(test_file))
         assert chunks == []
     os.remove(test_file)
@@ -310,7 +310,7 @@ function bar() {
         test_file = tmp_file.name
 
 
-    with pytest.raises(ValueError):
+    with pytest.raises(Exception):
         chunks = list(str(i) for i in chunker.chunk(test_file))
         assert chunks == []
     os.remove(test_file)
