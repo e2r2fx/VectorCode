@@ -22,14 +22,14 @@ function runner.run_async(args, callback, bufnr)
   local job = Job:new({
     command = "vectorcode",
     args = args,
-    on_exit = function(self, code, _)
+    on_exit = function(self, code, signal)
       jobs[self.pid] = nil
       local result = self:result()
       logger.debug(result)
       local ok, decoded = pcall(vim.json.decode, table.concat(result, ""))
       if callback ~= nil then
         if ok then
-          callback(decoded or {}, self:stderr_result(), code)
+          callback(decoded or {}, self:stderr_result(), code, signal)
           if vim.islist(result) then
             logger.debug(
               "cmd jobrunner result:\n",
@@ -58,11 +58,12 @@ function runner.run(args, timeout_ms, bufnr)
   if timeout_ms == nil or timeout_ms < 0 then
     timeout_ms = 2 ^ 31 - 1
   end
-  local res, err, code
-  local pid = runner.run_async(args, function(result, error, e_code)
+  local res, err, code, signal
+  local pid = runner.run_async(args, function(result, error, e_code, s)
     res = result
     err = error
     code = e_code
+    signal = s
   end, bufnr)
   if pid ~= nil then
     vim.wait(timeout_ms, function()
@@ -70,7 +71,7 @@ function runner.run(args, timeout_ms, bufnr)
     end)
     jobs[pid] = nil
   end
-  return res or {}, err, code
+  return res or {}, err, code, signal
 end
 
 function runner.is_job_running(job)
