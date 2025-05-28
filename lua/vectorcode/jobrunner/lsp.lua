@@ -52,18 +52,16 @@ function jobrunner.run(args, timeout_ms, bufnr)
   end
   args = require("vectorcode.jobrunner").find_root(args, bufnr)
 
-  local result, err
-  jobrunner.run_async(args, function(res, err)
+  local result, err, code
+  jobrunner.run_async(args, function(res, err, e_code)
     result = res
     err = err
+    code = e_code
   end, bufnr)
   vim.wait(timeout_ms, function()
     return (result ~= nil) or (err ~= nil)
   end)
-  if result == nil then
-    return {}, err
-  end
-  return result, err
+  return result or {}, err, code
 end
 
 function jobrunner.run_async(args, callback, bufnr)
@@ -102,7 +100,7 @@ function jobrunner.run_async(args, callback, bufnr)
         if err ~= nil and err.message ~= nil then
           err_message = { err.message }
         end
-        vim.schedule_wrap(callback)(result, err_message)
+        vim.schedule_wrap(callback)(result, err_message, err.code)
         if result then
           logger.debug(
             "lsp jobrunner result:\n",
