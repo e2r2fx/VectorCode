@@ -6,6 +6,8 @@ import sys
 import time
 import uuid
 
+from pygls.exceptions import JsonRpcInvalidRequest
+
 try:  # pragma: nocover
     from lsprotocol import types
     from pygls.server import LanguageServer
@@ -72,11 +74,11 @@ async def execute_command(ls: LanguageServer, args: list[str]):
     parsed_args = await parse_cli_args(args)
     logger.info("Parsed command arguments: %s", parsed_args)
     if parsed_args.action not in {CliAction.query, CliAction.ls}:
-        print(
-            f"Unsupported vectorcode subcommand: {str(parsed_args.action)}",
-            file=sys.stderr,
+        error_message = f"Unsupported vectorcode subcommand: {str(parsed_args.action)}"
+        logger.error(
+            error_message,
         )
-        return
+        raise JsonRpcInvalidRequest(error_message)
     if parsed_args.project_root is None:
         if DEFAULT_PROJECT_ROOT is not None:
             parsed_args.project_root = DEFAULT_PROJECT_ROOT
