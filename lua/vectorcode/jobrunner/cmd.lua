@@ -43,7 +43,7 @@ function runner.run_async(args, callback, bufnr)
             )
           end
         else
-          callback({ result }, self:stderr_result())
+          callback({ result }, self:stderr_result(), code, signal)
           logger.warn("cmd runner: failed to decode result:\n", result)
         end
       end

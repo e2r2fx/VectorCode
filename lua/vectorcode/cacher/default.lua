@@ -2,6 +2,7 @@
 local M = {}
 local vc_config = require("vectorcode.config")
 local notify_opts = vc_config.notify_opts
+local jobrunner = require("vectorcode.jobrunner.cmd")
 
 local logger = vc_config.logger
 
@@ -58,37 +59,35 @@ local function async_runner(query_message, buf_nr)
     )
     vim.list_extend(args, { "--project_root", project_root })
   end
+
+  if cache.options.single_job then
+    kill_jobs(buf_nr)
+  end
+
   CACHE[buf_nr].job_count = CACHE[buf_nr].job_count + 1
   logger.debug("vectorcode default cacher job args: ", args)
-  local job = require("plenary.job"):new({
-    command = "vectorcode",
-    args = args,
-    detached = true,
-    on_start = function()
-      if cache.options.single_job then
-        kill_jobs(buf_nr)
-      end
-    end,
-    on_exit = function(self, code, signal)
+
+  -- jobrunner is assumed to be defined at the module level, e.g., local jobrunner = require("vectorcode.jobrunner.cmd")
+  local job_pid
+  job_pid = jobrunner.run_async(
+    args,
+    function(json_result, stderr_error, exit_code, signal)
       if not M.buf_is_registered(buf_nr) then
         return
       end
-      logger.debug("vectorcode ", buf_name, " default cacher results: ", self:result())
+      logger.debug("vectorcode ", buf_name, " default cacher results: ", json_result)
       CACHE[buf_nr].job_count = CACHE[buf_nr].job_count - 1
-      CACHE[buf_nr].jobs[self.pid] = nil
-      local ok, json = pcall(
-        vim.json.decode,
-        table.concat(self:result()) or "[]",
-        { array = true, object = true }
-      )
-      if not ok or code ~= 0 then
+      assert(job_pid ~= nil)
+      CACHE[buf_nr].jobs[job_pid] = nil
+
+      if exit_code ~= 0 then
         vim.schedule(function()
           if CACHE[buf_nr].options.notify then
             if signal == 15 then
               vim.notify("Retrieval aborted.", vim.log.levels.INFO, notify_opts)
             else
               vim.notify(
-                "Retrieval failed:\n" .. table.concat(self:result()),
+                "Retrieval failed:\\n" .. table.concat(stderr_error, "\n"),
                 vim.log.levels.WARN,
                 notify_opts
               )
@@ -98,7 +97,7 @@ local function async_runner(query_message, buf_nr)
         return
       end
       cache = CACHE[buf_nr]
-      cache.retrieval = json or {}
+      cache.retrieval = json_result or {}
       vim.schedule(function()
         if cache.options.notify then
           vim.notify(
@@ -109,12 +108,15 @@ local function async_runner(query_message, buf_nr)
         end
       end)
     end,
-  })
-  job:start()
+    buf_nr
+  )
+
   ---@type VectorCode.Cache
   cache = CACHE[buf_nr]
-  cache.last_run = vim.uv.clock_gettime("realtime").sec
-  cache.jobs[job.pid] = vim.uv.clock_gettime("realtime").sec
+  if job_pid then
+    cache.last_run = vim.uv.clock_gettime("realtime").sec
+    cache.jobs[job_pid] = vim.uv.clock_gettime("realtime").sec
+  end
   vim.schedule(function()
     if cache.options.notify then
       vim.notify(

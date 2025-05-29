@@ -100,7 +100,11 @@ function jobrunner.run_async(args, callback, bufnr)
         if err ~= nil and err.message ~= nil then
           err_message = { err.message }
         end
-        vim.schedule_wrap(callback)(result, err_message, err.code)
+        local code = 0
+        if err and err.code then
+          code = err.code
+        end
+        vim.schedule_wrap(callback)(result, err_message, code)
         if result then
           logger.debug(
             "lsp jobrunner result:\n",
