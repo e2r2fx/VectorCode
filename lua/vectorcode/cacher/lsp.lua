@@ -348,21 +348,14 @@ end
 ---@param on_success fun(out: vim.SystemCompleted)?
 ---@param on_failure fun(out: vim.SystemCompleted?)?
 function M.async_check(check_item, on_success, on_failure)
-  if not vc_config.has_cli() then
-    if on_failure ~= nil then
-      on_failure()
-    end
-    return
-  end
-
-  check_item = check_item or "config"
-  vim.system({ "vectorcode", "check", check_item }, {}, function(out)
-    if out.code == 0 and type(on_success) == "function" then
-      vim.schedule_wrap(on_success)(out)
-    elseif out.code ~= 0 and type(on_failure) == "function" then
-      vim.schedule_wrap(on_failure)(out)
-    end
-  end)
+  vim.deprecate(
+    "vectorcode.cacher.default.async_check",
+    "vectorcode.cacher.utils.async_check",
+    "0.7.0",
+    "VectorCode",
+    true
+  )
+  require("vectorcode.cacher").utils.async_check(check_item, on_success, on_failure)
 end
 
 ---@param bufnr integer?

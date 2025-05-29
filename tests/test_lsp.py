@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from pygls.exceptions import JsonRpcInvalidRequest
 from pygls.server import LanguageServer
 
 from vectorcode import __version__
@@ -245,9 +246,8 @@ async def test_execute_command_unsupported_action(
         # Mock the merge_from method
         mock_config.merge_from = AsyncMock(return_value=mock_config)
 
-        await execute_command(mock_language_server, ["invalid_action"])
-        captured = capsys.readouterr()
-        assert "Unsupported vectorcode subcommand" in captured.err
+        with pytest.raises(JsonRpcInvalidRequest):
+            await execute_command(mock_language_server, ["invalid_action"])
 
 
 @pytest.mark.asyncio

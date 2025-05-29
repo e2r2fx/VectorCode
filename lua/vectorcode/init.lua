@@ -186,14 +186,17 @@ function M.check(check_item, stdout_cb)
   end
   check_item = check_item or "config"
   local return_code
-  vim
-    .system({ "vectorcode", "check", check_item }, {}, function(out)
-      return_code = out.code
-      if type(stdout_cb) == "function" then
-        stdout_cb(out)
-      end
-    end)
-    :wait()
+  jobrunner.run_async({ "check", check_item }, function(result, error, code, signal)
+    return_code = code
+    if type(stdout_cb) == "function" then
+      stdout_cb({
+        stdout = table.concat(vim.iter(result):flatten(math.huge):totable()),
+        stderr = table.concat(vim.iter(error):flatten(math.huge):totable()),
+        code = code,
+        signal = signal,
+      })
+    end
+  end, 0)
   return return_code == 0
 end
 
