@@ -17,7 +17,6 @@ local cacher = nil
 local config = {
   cli_cmds = {
     vectorcode = "vectorcode",
-    vectorcode_server = "vectorcode-server",
   },
   async_opts = {
     debounce = 10,
@@ -41,13 +40,12 @@ local config = {
 
 local setup_config = vim.deepcopy(config, true)
 local vectorcode_cli_cmd = setup_config.cli_cmds.vectorcode
-local vectorcode_server_cli_cmd = setup_config.cli_cmds.vectorcode_server
 
 ---@return vim.lsp.ClientConfig
 local lsp_configs = function()
   ---@type vim.lsp.ClientConfig
   local cfg =
-    { cmd = { vectorcode_server_cli_cmd }, root_markers = { ".vectorcode", ".git" } }
+    { cmd = { "vectorcode-server" }, root_markers = { ".vectorcode", ".git" } } -- NOTE: This can be overriden by `vim.lsp.config`
   if vim.lsp.config ~= nil and vim.lsp.config.vectorcode_server ~= nil then
     -- nvim >= 0.11.0
     cfg = vim.tbl_deep_extend("force", cfg, vim.lsp.config.vectorcode_server)

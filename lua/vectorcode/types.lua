@@ -25,7 +25,6 @@
 
 ---@class VectorCode.CliCmds Cli commands to use
 ---@field vectorcode string vectorcode cli command or full path
----@field vectorcode_server string vectorcode-server cli command or full path
 
 ---Options passed to `setup`.
 ---@class VectorCode.Opts : VectorCode.QueryOpts
