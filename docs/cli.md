@@ -8,6 +8,7 @@
   * [Chromadb](#chromadb)
     * [For Windows Users](#for-windows-users)
   * [Legacy Environments](#legacy-environments)
+  * [Nix](#nix)
 * [Getting Started](#getting-started)
   * [Refreshing Embeddings](#refreshing-embeddings)
   * [If Anything Goes Wrong...](#if-anything-goes-wrong)
@@ -106,6 +107,11 @@ try installing the package by `pipx install vectorcode[legacy]`, which enforces
 numpy `v1.x`. If this doesn't help, please open an issue with your OS, CPU
 architecture, python version and the vectorcode virtual environment 
 (`pipx runpip vectorcode freeze`).
+
+### Nix
+
+A community-maintained Nix package is available 
+[here](https://search.nixos.org/packages?channel=unstable&from=0&size=50&sort=relevance&type=packages&query=vectorcode).
 
 ## Getting Started
 
