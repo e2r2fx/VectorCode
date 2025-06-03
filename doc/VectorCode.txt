@@ -162,7 +162,6 @@ This function initialises the VectorCode client and sets up some default
     require("vectorcode").setup({
       cli_cmds = {
         vectorcode = "vectorcode",
-        vectorcode_server = "vectorcode-server",
       },
       async_opts = {
         debounce = 10,
@@ -188,18 +187,17 @@ This function initialises the VectorCode client and sets up some default
 
 The following are the available options for the parameter of this function: -
 `cli_cmds`A table to customize the CLI command names / paths used by the
-plugin. Supported keys: - `vectorcode`The command / path to use for the main
-CLI tool. Default: `"vectorcode"`. - `vectorcode_server`The command / path to
-use for the server component. Default: `"vectorcode-server"`. - `n_query`number
-of retrieved documents. A large number gives a higher chance of including the
-right file, but with the risk of saturating the context window and getting
-truncated. Default: `1`; - `notify`whether to show notifications when a query
-is completed. Default: `true`; - `timeout_ms`timeout in milliseconds for the
-query operation. Applies to synchronous API only. Default: `5000` (5 seconds);
-- `exclude_this`whether to exclude the file you’re editing. Setting this to
-`false` may lead to an outdated version of the current file being sent to the
-LLM as the prompt, and can lead to generations with outdated information; -
-`async_opts`default options used when registering buffers. See
+plugin. Supported key: - `vectorcode`The command / path to use for the main CLI
+tool. Default: `"vectorcode"`. - `n_query`number of retrieved documents. A
+large number gives a higher chance of including the right file, but with the
+risk of saturating the context window and getting truncated. Default: `1`; -
+`notify`whether to show notifications when a query is completed. Default:
+`true`; - `timeout_ms`timeout in milliseconds for the query operation. Applies
+to synchronous API only. Default: `5000` (5 seconds); - `exclude_this`whether
+to exclude the file you’re editing. Setting this to `false` may lead to an
+outdated version of the current file being sent to the LLM as the prompt, and
+can lead to generations with outdated information; - `async_opts`default
+options used when registering buffers. See
 |VectorCode-`register_buffer(bufnr?,-opts?)`| for details; - `async_backend`the
 async backend to use, currently either `"default"` or `"lsp"`. Default:
 `"default"`; - `on_setup`some actions that can be registered to run when
