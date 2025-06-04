@@ -163,6 +163,3 @@ cython_debug/
 
 # VectorCode
 src/vectorcode/_version.py
-
-# nix
-result
