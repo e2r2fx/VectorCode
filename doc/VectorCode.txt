@@ -10,6 +10,7 @@ Table of Contents                               *VectorCode-table-of-contents*
   - Configuration                     |VectorCode-neovim-plugin-configuration|
   - API Usage                             |VectorCode-neovim-plugin-api-usage|
   - Debugging and Logging     |VectorCode-neovim-plugin-debugging-and-logging|
+2. Links                                                    |VectorCode-links|
 
 ==============================================================================
 1. NeoVim Plugin                                    *VectorCode-neovim-plugin*
@@ -22,6 +23,7 @@ Table of Contents                               *VectorCode-table-of-contents*
   [!NOTE] When the neovim plugin doesn’t work properly, please try upgrading
   the CLI tool to the latest version before opening an issue.
 - |VectorCode-installation|
+    - |VectorCode-nix|
 - |VectorCode-integrations|
 - |VectorCode-user-command|
     - |VectorCode-`vectorcode-register`|
@@ -90,6 +92,13 @@ you can use the following plugin spec:
   (specifically the package provided in the Extra
   <https://archlinux.org/packages/extra/x86_64/neovim/> repository of Arch
   Linux).
+
+NIX ~
+
+There’s a community-maintained nix package
+<https://nixpk.gs/pr-tracker.html?pr=413395> submitted by @sarahec
+<https://github.com/sarahec> for the Neovim plugin.
+
 
 INTEGRATIONS                           *VectorCode-neovim-plugin-integrations*
 
@@ -160,6 +169,9 @@ This function initialises the VectorCode client and sets up some default
 >lua
     -- Default configuration
     require("vectorcode").setup({
+      cli_cmds = {
+        vectorcode = "vectorcode",
+      },
       async_opts = {
         debounce = 10,
         events = { "BufWritePost", "InsertEnter", "BufReadPost" },
@@ -183,22 +195,25 @@ This function initialises the VectorCode client and sets up some default
 <
 
 The following are the available options for the parameter of this function: -
-`n_query`number of retrieved documents. A large number gives a higher chance of
-including the right file, but with the risk of saturating the context window
-and getting truncated. Default: `1`; - `notify`whether to show notifications
-when a query is completed. Default: `true`; - `timeout_ms`timeout in
-milliseconds for the query operation. Applies to synchronous API only. Default:
-`5000` (5 seconds); - `exclude_this`whether to exclude the file you’re
-editing. Setting this to `false` may lead to an outdated version of the current
-file being sent to the LLM as the prompt, and can lead to generations with
-outdated information; - `async_opts`default options used when registering
-buffers. See |VectorCode-`register_buffer(bufnr?,-opts?)`| for details; -
-`async_backend`the async backend to use, currently either `"default"` or
-`"lsp"`. Default: `"default"`; - `on_setup`some actions that can be registered
-to run when `setup` is called. Supported keys: - `update`if `true`, the plugin
-will run `vectorcode update` on startup to update the embeddings; - `lsp`if
-`true`, the plugin will try to start the LSP server on startup so that you
-won’t need to wait for the server loading when making your first request. -
+`cli_cmds`A table to customize the CLI command names / paths used by the
+plugin. Supported key: - `vectorcode`The command / path to use for the main CLI
+tool. Default: `"vectorcode"`. - `n_query`number of retrieved documents. A
+large number gives a higher chance of including the right file, but with the
+risk of saturating the context window and getting truncated. Default: `1`; -
+`notify`whether to show notifications when a query is completed. Default:
+`true`; - `timeout_ms`timeout in milliseconds for the query operation. Applies
+to synchronous API only. Default: `5000` (5 seconds); - `exclude_this`whether
+to exclude the file you’re editing. Setting this to `false` may lead to an
+outdated version of the current file being sent to the LLM as the prompt, and
+can lead to generations with outdated information; - `async_opts`default
+options used when registering buffers. See
+|VectorCode-`register_buffer(bufnr?,-opts?)`| for details; - `async_backend`the
+async backend to use, currently either `"default"` or `"lsp"`. Default:
+`"default"`; - `on_setup`some actions that can be registered to run when
+`setup` is called. Supported keys: - `update`if `true`, the plugin will run
+`vectorcode update` on startup to update the embeddings; - `lsp`if `true`, the
+plugin will try to start the LSP server on startup so that you won’t need to
+wait for the server loading when making your first request. -
 `sync_log_env_var``boolean`. If true, this plugin will automatically set the
 `VECTORCODE_LOG_LEVEL` environment variable for LSP or cmd processes started
 within your neovim session when logging is turned on for this plugin. Use at
@@ -511,6 +526,11 @@ variable to a supported log level
 <https://github.com/nvim-lua/plenary.nvim/blob/857c5ac632080dba10aae49dba902ce3abf91b35/lua/plenary/log.lua#L44>.
 The log file will be written to `stdpath("log")` or `stdpath("cache")`. On
 Linux, this is usually `~/.local/state/nvim/`.
+
+==============================================================================
+2. Links                                                    *VectorCode-links*
+
+1. *@sarahec*: 
 
 Generated by panvimdoc <https://github.com/kdheepak/panvimdoc>
 

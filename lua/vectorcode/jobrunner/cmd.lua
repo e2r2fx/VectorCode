@@ -12,15 +12,12 @@ function runner.run_async(args, callback, bufnr)
   else
     callback = nil
   end
-  local cmd = { "vectorcode" }
-  args = require("vectorcode.jobrunner").find_root(args, bufnr)
-  vim.list_extend(cmd, args)
   logger.debug(
     ("cmd jobrunner for buffer %s args: %s"):format(bufnr, vim.inspect(args))
   )
   ---@diagnostic disable-next-line: missing-fields
   local job = Job:new({
-    command = "vectorcode",
+    command = require("vectorcode.config").get_user_config().cli_cmds.vectorcode,
     args = args,
     on_exit = function(self, code, signal)
       jobs[self.pid] = nil
@@ -49,9 +46,13 @@ function runner.run_async(args, callback, bufnr)
       end
     end,
   })
-  job:start()
-  jobs[job.pid] = job
-  return tonumber(job.pid)
+  local ok = pcall(job.start, job)
+  if ok then
+    jobs[job.pid] = job
+    return tonumber(job.pid)
+  else
+    logger.error("Failed to start job.")
+  end
 end
 
 function runner.run(args, timeout_ms, bufnr)

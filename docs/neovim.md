@@ -12,6 +12,7 @@
 <!-- mtoc-start -->
 
 * [Installation](#installation)
+  * [Nix](#nix)
 * [Integrations](#integrations)
 * [User Command](#user-command)
   * [`VectorCode register`](#vectorcode-register)
@@ -80,6 +81,11 @@ you can use the following plugin spec:
 > [Extra](https://archlinux.org/packages/extra/x86_64/neovim/) 
 > repository of Arch Linux).
 
+### Nix
+
+There's a community-maintained [nix package](https://nixpk.gs/pr-tracker.html?pr=413395) 
+submitted by [@sarahec](https://github.com/sarahec) for the Neovim plugin.
+
 ## Integrations
 
 [The wiki](https://github.com/Davidyz/VectorCode/wiki/Neovim-Integrations)
@@ -137,6 +143,9 @@ This function initialises the VectorCode client and sets up some default
 ```lua
 -- Default configuration
 require("vectorcode").setup({
+  cli_cmds = {
+    vectorcode = "vectorcode",
+  },
   async_opts = {
     debounce = 10,
     events = { "BufWritePost", "InsertEnter", "BufReadPost" },
@@ -160,6 +169,9 @@ require("vectorcode").setup({
 ```
 
 The following are the available options for the parameter of this function:
+- `cli_cmds`: A table to customize the CLI command names / paths used by the plugin.
+  Supported key:
+  - `vectorcode`: The command / path to use for the main CLI tool. Default: `"vectorcode"`.
 - `n_query`: number of retrieved documents. A large number gives a higher chance
   of including the right file, but with the risk of saturating the context 
   window and getting truncated. Default: `1`;

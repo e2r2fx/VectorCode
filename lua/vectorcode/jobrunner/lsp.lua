@@ -1,9 +1,4 @@
-if
-  vim.fn.executable("vectorcode-server") ~= 1
-  or vim.system({ "vectorcode-server", "--version" }):wait().code ~= 0
-then
-  return nil
-end
+local vc_config = require("vectorcode.config")
 
 ---@type VectorCode.JobRunner
 local jobrunner = {}
@@ -11,7 +6,6 @@ local jobrunner = {}
 ---@type vim.lsp.Client
 local CLIENT = nil
 
-local vc_config = require("vectorcode.config")
 local notify_opts = vc_config.notify_opts
 local logger = vc_config.logger
 
@@ -93,6 +87,7 @@ function jobrunner.run_async(args, callback, bufnr)
   )
   local _, id = CLIENT:request(
     vim.lsp.protocol.Methods.workspace_executeCommand,
+    -- NOTE: This is not a hardcoded executable, but rather part of our LSP implementation.
     { command = "vectorcode", arguments = args },
     function(err, result, _, _)
       if type(callback) == "function" then
