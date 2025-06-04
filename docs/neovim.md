@@ -12,6 +12,7 @@
 <!-- mtoc-start -->
 
 * [Installation](#installation)
+  * [Nix](#nix)
 * [Integrations](#integrations)
 * [User Command](#user-command)
   * [`VectorCode register`](#vectorcode-register)
@@ -79,6 +80,11 @@ you can use the following plugin spec:
 > (specifically the package provided in the 
 > [Extra](https://archlinux.org/packages/extra/x86_64/neovim/) 
 > repository of Arch Linux).
+
+### Nix
+
+There's a community-maintained [nix package](https://nixpk.gs/pr-tracker.html?pr=413395) 
+submitted by [@sarahec](https://github.com/sarahec) for the Neovim plugin.
 
 ## Integrations
 
