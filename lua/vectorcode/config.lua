@@ -39,7 +39,6 @@ local config = {
 }
 
 local setup_config = vim.deepcopy(config, true)
-local vectorcode_cli_cmd = setup_config.cli_cmds.vectorcode
 
 ---@return vim.lsp.ClientConfig
 local lsp_configs = function()
@@ -78,7 +77,7 @@ local notify_opts = { title = "VectorCode" }
 ---@param opts {notify:boolean}?
 local has_cli = function(opts)
   opts = opts or { notify = false }
-  local ok = vim.fn.executable(vectorcode_cli_cmd) == 1
+  local ok = vim.fn.executable(setup_config.cli_cmds.vectorcode) == 1
   if not ok and opts.notify then
     vim.notify("VectorCode CLI is not executable!", vim.log.levels.ERROR, notify_opts)
   end
