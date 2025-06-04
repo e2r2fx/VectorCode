@@ -4,8 +4,6 @@ local runner = {}
 local Job = require("plenary.job")
 ---@type {integer: Job}
 local jobs = {}
-local vectorcode_cli_cmd =
-  require("vectorcode.config").get_user_config().cli_cmds.vectorcode
 local logger = require("vectorcode.config").logger
 
 function runner.run_async(args, callback, bufnr)
@@ -19,7 +17,7 @@ function runner.run_async(args, callback, bufnr)
   )
   ---@diagnostic disable-next-line: missing-fields
   local job = Job:new({
-    command = vectorcode_cli_cmd,
+    command = require("vectorcode.config").get_user_config().cli_cmds.vectorcode,
     args = args,
     on_exit = function(self, code, signal)
       jobs[self.pid] = nil
@@ -48,9 +46,13 @@ function runner.run_async(args, callback, bufnr)
       end
     end,
   })
-  job:start()
-  jobs[job.pid] = job
-  return tonumber(job.pid)
+  local ok = pcall(job.start, job)
+  if ok then
+    jobs[job.pid] = job
+    return tonumber(job.pid)
+  else
+    logger.error("Failed to start job.")
+  end
 end
 
 function runner.run(args, timeout_ms, bufnr)

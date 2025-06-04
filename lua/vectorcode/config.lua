@@ -145,6 +145,8 @@ return {
           )
         end
       end
+      setup_config.cli_cmds.vectorcode =
+        vim.fs.normalize(setup_config.cli_cmds.vectorcode)
       startup_handler(setup_config)
       logger.info("Finished processing opts:\n", setup_config)
     end
