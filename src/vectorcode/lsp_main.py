@@ -9,6 +9,13 @@ import uuid
 
 import shtab
 
+from vectorcode.subcommands.vectorise import (
+    chunked_add,
+    exclude_paths_by_spec,
+    find_exclude_specs,
+    load_files_from_include,
+)
+
 try:  # pragma: nocover
     from lsprotocol import types
     from pygls.exceptions import (
@@ -29,6 +36,7 @@ from vectorcode.cli_utils import (
     Config,
     cleanup_path,
     config_logging,
+    expand_globs,
     find_project_root,
     get_project_config,
     parse_cli_args,
@@ -86,14 +94,6 @@ async def execute_command(ls: LanguageServer, args: list[str]):
         logger.info("Received command arguments: %s", args)
         parsed_args = await parse_cli_args(args)
         logger.info("Parsed command arguments: %s", parsed_args)
-        if parsed_args.action not in {CliAction.query, CliAction.ls}:
-            error_message = (
-                f"Unsupported vectorcode subcommand: {str(parsed_args.action)}"
-            )
-            logger.error(
-                error_message,
-            )
-            raise JsonRpcInvalidRequest(error_message)
         if parsed_args.project_root is None:
             if DEFAULT_PROJECT_ROOT is not None:
                 parsed_args.project_root = DEFAULT_PROJECT_ROOT
@@ -136,12 +136,12 @@ async def execute_command(ls: LanguageServer, args: list[str]):
                 )
                 final_results = []
                 try:
-                    if collection is None:
-                        print("Please specify a project to search in.", file=sys.stderr)
-                    else:
-                        final_results.extend(
-                            await build_query_results(collection, final_configs)
-                        )
+                    assert collection is not None, (
+                        "Failed to find the correct collection."
+                    )
+                    final_results.extend(
+                        await build_query_results(collection, final_configs)
+                    )
                 finally:
                     log_message = f"Retrieved {len(final_results)} result{'s' if len(final_results) > 1 else ''} in {round(time.time() - start_time, 2)}s."
                     ls.progress.end(
@@ -168,11 +168,73 @@ async def execute_command(ls: LanguageServer, args: list[str]):
                     )
                     logger.info(f"Retrieved {len(projects)} project(s).")
                 return projects
-    except Exception as e:
+            case CliAction.vectorise:
+                assert collection is not None, "Failed to find the correct collection."
+                ls.progress.begin(
+                    progress_token,
+                    types.WorkDoneProgressBegin(
+                        title="VectorCode", message="Vectorising files...", percentage=0
+                    ),
+                )
+                files = await expand_globs(
+                    final_configs.files
+                    or load_files_from_include(str(final_configs.project_root)),
+                    recursive=final_configs.recursive,
+                    include_hidden=final_configs.include_hidden,
+                )
+                if not final_configs.force:  # pragma: nocover
+                    # tested in 'vectorise.py'
+                    for spec in find_exclude_specs(final_configs):
+                        if os.path.isfile(spec):
+                            logger.info(f"Loading ignore specs from {spec}.")
+                            files = exclude_paths_by_spec((str(i) for i in files), spec)
+                stats = {"add": 0, "update": 0, "removed": 0}
+                collection_lock = asyncio.Lock()
+                stats_lock = asyncio.Lock()
+                max_batch_size = await client.get_max_batch_size()
+                semaphore = asyncio.Semaphore(os.cpu_count() or 1)
+                tasks = [
+                    asyncio.create_task(
+                        chunked_add(
+                            str(file),
+                            collection,
+                            collection_lock,
+                            stats,
+                            stats_lock,
+                            final_configs,
+                            max_batch_size,
+                            semaphore,
+                        )
+                    )
+                    for file in files
+                ]
+                for i, task in enumerate(asyncio.as_completed(tasks), start=1):
+                    await task
+                    ls.progress.report(
+                        progress_token,
+                        types.WorkDoneProgressReport(
+                            message="Vectorising files...",
+                            percentage=int(100 * i / len(tasks)),
+                        ),
+                    )
+                ls.progress.end(
+                    progress_token,
+                    types.WorkDoneProgressEnd(
+                        message=f"Vectorised {stats['add'] + stats['update']} files."
+                    ),
+                )
+                return stats
+            case _ as c:  # pragma: nocover
+                error_message = f"Unsupported vectorcode subcommand: {str(c)}"
+                logger.error(
+                    error_message,
+                )
+                raise JsonRpcInvalidRequest(error_message)
+    except Exception as e:  # pragma: nocover
         if isinstance(e, JsonRpcException):
             # pygls exception. raise it as is.
             raise
-        else:  # pragma: nocover
+        else:
             # wrap non-pygls errors for error codes.
             raise JsonRpcInternalError(message=traceback.format_exc()) from e
 
