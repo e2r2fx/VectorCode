@@ -20,11 +20,20 @@ __GLOBAL_HOOKS_PATH = Path(GLOBAL_CONFIG_DIR) / "hooks"
 __HOOK_CONTENTS: dict[str, list[str]] = {
     "pre-commit": [
         "diff_files=$(git diff --cached --name-only)",
-        '[ -z "$diff_files" ] || vectorcode vectorise $diff_files',
+        'if [ -d ".vectorcode" ] && [ ! -z "$diff_files" ]; then',
+        "  vectorcode vectorise $diff_files",
+        "fi",
     ],
     "post-checkout": [
-        'files=$(git diff --name-only "$1" "$2")',
-        '[ -z "$files" ] || vectorcode vectorise $files',
+        'if [ -z "$(echo $1|grep [^0])" ]; then',
+        '  files=""',
+        "  ( [ -f .vectorcode/vectorcode.include ] || [ -f ~/.config/vectorcode/vectorcode.include ] ) && vectorcode vectorise || true",
+        "else",
+        '  files=$(git diff --name-only "$1" "$2")',
+        "fi",
+        'if [ -d ".vectorcode" ] && [ ! -z "$files" ]; then',
+        "  vectorcode vectorise $files",
+        "fi",
     ],
 }
 
@@ -84,6 +93,8 @@ class HookFile:
             self.lines.extend(i if i.endswith("\n") else i + "\n" for i in content)
             self.lines.append(self.suffix + "\n")
         with open(self.path, "w") as fin:
+            if os.path.islink(self.path):  # pragma: nocover
+                logger.warning(f"{self.path} is a symlink.")
             fin.writelines(self.lines)
         if platform.system() != "Windows":
             # for unix systems, set the executable bit.
