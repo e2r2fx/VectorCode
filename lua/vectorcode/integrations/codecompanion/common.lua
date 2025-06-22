@@ -1,3 +1,5 @@
+---@module "codecompanion"
+
 local job_runner
 local vc_config = require("vectorcode.config")
 local notify_opts = vc_config.notify_opts
@@ -17,8 +19,10 @@ local default_ls_options = {}
 ---@type VectorCode.CodeCompanion.VectoriseToolOpts
 local default_vectorise_options = {}
 
+local TOOL_RESULT_SOURCE = "VectorCodeToolResult"
+
 return {
-  tool_result_source = "VectorCodeToolResult",
+  tool_result_source = TOOL_RESULT_SOURCE,
   ---@param t table|string
   ---@return string
   flatten_table_to_string = function(t)
@@ -122,6 +126,7 @@ return {
     end
     return llm_message
   end,
+
   ---@param use_lsp boolean
   ---@return VectorCode.JobRunner
   initialise_runner = function(use_lsp)
