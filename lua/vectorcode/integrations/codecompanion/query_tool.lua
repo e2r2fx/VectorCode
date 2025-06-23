@@ -1,6 +1,9 @@
 ---@module "codecompanion"
 
 local cc_common = require("vectorcode.integrations.codecompanion.common")
+local cc_config = require("codecompanion.config").config
+local cc_schema = require("codecompanion.schema")
+local http_client = require("codecompanion.http")
 local vc_config = require("vectorcode.config")
 local check_cli_wrap = vc_config.check_cli_wrap
 local logger = vc_config.logger
@@ -78,6 +81,91 @@ local filter_results = function(results, chat)
   end
 
   return filtered_results
+end
+
+---@alias ChatMessage {role: string, content:string}
+
+---@param adapter CodeCompanion.Adapter
+---@param system_prompt string
+---@param user_messages string|string[]
+---@return {messages: ChatMessage[], tools:table?}
+local function make_oneshot_payload(adapter, system_prompt, user_messages)
+  if type(user_messages) == "string" then
+    user_messages = { user_messages }
+  end
+  local messages =
+    { { role = cc_config.constants.SYSTEM_ROLE, content = system_prompt } }
+  for _, m in pairs(user_messages) do
+    table.insert(messages, { role = cc_config.constants.USER_ROLE, content = m })
+  end
+  return { messages = adapter:map_roles(messages) }
+end
+
+---@param result VectorCode.QueryResult[]
+---@param cmd QueryToolArgs
+---@param summarise_opts VectorCode.CodeCompanion.SummariseOpts
+---@param callback fun(summary:string)
+local function generate_summary(result, summarise_opts, cmd, callback)
+  assert(vim.islist(result), "result should be a list of VectorCode.QueryResult")
+  local result_xml = table.concat(vim
+    .iter(result)
+    :map(function(res)
+      return cc_common.process_result(res)
+    end)
+    :totable())
+
+  if summarise_opts.enabled and type(callback) == "function" then
+    ---@type CodeCompanion.Adapter
+    local adapter =
+      vim.deepcopy(require("codecompanion.adapters").resolve(summarise_opts.adapter))
+
+    local system_prompt = summarise_opts.system_prompt
+    if type(system_prompt) == "function" then
+      system_prompt = system_prompt(
+        cc_common.get_query_tool_opts().summarise.system_prompt --[[@as string]]
+      )
+    end
+
+    assert(
+      type(system_prompt) == "string",
+      "`system_prompt` should have been converted to a string."
+    )
+    if summarise_opts.query_augmented then
+      system_prompt = string.format(
+        [[%s
+        
+The code provided to you is the result of a search in a codebase from the following query: %s.
+When summarising the code, pay extra attention on information related to the queries.
+      ]],
+        system_prompt,
+        table.concat(cmd.query, ", ")
+      )
+    end
+    local payload = make_oneshot_payload(adapter, system_prompt, result_xml)
+    local settings =
+      vim.deepcopy(adapter:map_schema_to_params(cc_schema.get_default(adapter)))
+    settings.opts.stream = false
+
+    ---@type CodeCompanion.Client
+    local client = http_client.new({ adapter = settings })
+    client:request(payload, {
+      ---@param _adapter CodeCompanion.Adapter
+      callback = function(_, data, _adapter)
+        if data then
+          local res = _adapter.handlers.chat_output(_adapter, data)
+          if res and res.status == "success" then
+            local gen_summary = vim.trim(res.output.content or "")
+            if gen_summary ~= "" then
+              return callback(gen_summary)
+            end
+          end
+        end
+        return callback(result_xml)
+      end,
+    }, { silent = true })
+  else
+    callback(result_xml)
+  end
 end
 
 ---@param opts VectorCode.CodeCompanion.QueryToolOpts?
@@ -181,7 +269,27 @@ return check_cli_wrap(function(opts)
 
         job_runner.run_async(args, function(result, error)
           if vim.islist(result) and #result > 0 and result[1].path ~= nil then ---@cast result VectorCode.QueryResult[]
-            cb({ status = "success", data = result })
+            if opts.no_duplicate then
+              result = filter_results(result, agent.chat)
+            end
+            local max_result = #result
+            if opts.max_num > 0 then
+              max_result = math.min(tonumber(opts.max_num) or 1, max_result)
+            end
+            while #result > max_result do
+              table.remove(result)
+            end
+            local summary_opts = vim.deepcopy(opts.summarise) or {}
+            if type(summary_opts.enabled) == "function" then
+              summary_opts.enabled = summary_opts.enabled(agent.chat, result)
+            end
+            generate_summary(result, summary_opts, action, function(s)
+              cb({
+                status = "success",
+                ---@type VectorCode.CodeCompanion.QueryToolResult
+                data = { raw_results = result, count = #result, summary = s },
+              })
+            end)
           else
             if type(error) == "table" then
               error = cc_common.flatten_table_to_string(error)
@@ -280,50 +388,33 @@ If a query returned empty or repeated results, you should avoid using these quer
       end,
       ---@param agent CodeCompanion.Agent
       ---@param cmd QueryToolArgs
-      ---@param stdout VectorCode.QueryResult[][]
+      ---@param stdout VectorCode.CodeCompanion.QueryToolResult[]
       success = function(self, agent, cmd, stdout)
         stdout = stdout[1]
         logger.info(
           ("CodeCompanion tool with command %s finished."):format(vim.inspect(cmd))
         )
-        local user_message
-        local max_result = #stdout
-        if opts.max_num > 0 then
-          max_result = math.min(opts.max_num or 1, max_result)
-        end
-        if opts.no_duplicate then
-          stdout = filter_results(stdout, agent.chat)
-        end
-        for i, file in pairs(stdout) do
-          if i <= max_result then
-            if i == 1 then
-              user_message = string.format(
-                "**VectorCode Tool**: Retrieved %d %s(s)",
-                max_result,
-                mode
-              )
-              if cmd.project_root then
-                user_message = user_message .. " from " .. cmd.project_root
-              end
-              user_message = user_message .. "\n"
-            else
-              user_message = ""
-            end
-            agent.chat:add_tool_output(
-              self,
-              cc_common.process_result(file),
-              user_message
-            )
-            if not opts.chunk_mode then
-              -- only add to reference if running in full document mode
-              local ref = {
-                source = cc_common.tool_result_source,
-                id = file.path,
-                path = file.path,
-                opts = { visible = false },
-              }
-              agent.chat.references:add(ref)
-            end
+        agent.chat:add_tool_output(
+          self,
+          stdout.summary
+            or table.concat(vim
+              .iter(stdout.raw_results or {})
+              :map(function(res)
+                return cc_common.process_result(res)
+              end)
+              :totable()),
+          string.format("**VectorCode Tool**: Retrieved %d %s(s)", stdout.count, mode)
+        )
+        for _, file in pairs(stdout) do
+          if not opts.chunk_mode then
+            -- skip referencing because there will be multiple chunks with the same path (id).
+            -- TODO: figure out a way to deduplicate.
+            agent.chat.references:add({
+              source = cc_common.tool_result_source,
+              id = file.path,
+              path = file.path,
+              opts = { visible = false },
+            })
           end
         end
       end,
