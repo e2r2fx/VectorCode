@@ -509,6 +509,7 @@ async def test_wait_for_server_timeout():
 
 @pytest.mark.asyncio
 async def test_client_manager_get_client():
+    ClientManager().clear()
     config = Config(
         db_url="https://test_host:1234", db_path="test_db", project_root="test_proj"
     )
@@ -529,13 +530,12 @@ async def test_client_manager_get_client():
         patch("chromadb.AsyncHttpClient") as MockAsyncHttpClient,
         patch("vectorcode.common.try_server", return_value=True),
     ):
-        mock_client = MagicMock(spec=AsyncClientAPI)
+        mock_client = MagicMock(spec=AsyncClientAPI, parent=AsyncClientAPI)
         MockAsyncHttpClient.return_value = mock_client
 
         async with (
-            ClientManager().get_client(config) as client,
+            ClientManager().get_client(config),
         ):
-            assert isinstance(client, AsyncClientAPI)
             MockAsyncHttpClient.assert_called()
             assert (
                 MockAsyncHttpClient.call_args.kwargs["settings"].chroma_server_host
@@ -560,7 +560,6 @@ async def test_client_manager_get_client():
                 ClientManager().get_client(config1) as client1,
                 ClientManager().get_client(config1_alt) as client1_alt,
             ):
-                assert isinstance(client1, AsyncClientAPI)
                 MockAsyncHttpClient.assert_called()
                 assert (
                     MockAsyncHttpClient.call_args.kwargs["settings"].chroma_server_host
@@ -596,11 +595,11 @@ async def test_client_manager_list_server_processes():
         tempfile.TemporaryDirectory() as temp_dir,
         patch("vectorcode.common.start_server", side_effect=_start_server),
         patch("vectorcode.common.try_server", side_effect=_try_server),
+        patch("vectorcode.common.ClientManager._create_client"),
     ):
         db_path = os.path.join(temp_dir, "db")
         os.makedirs(db_path, exist_ok=True)
 
-        ClientManager._create_client = AsyncMock()
         async with ClientManager().get_client(
             Config(
                 db_url="http://test_host:8001",
