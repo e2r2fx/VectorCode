@@ -24,6 +24,7 @@ Table of Contents                               *VectorCode-table-of-contents*
   both the CLI and the neovim plugin to the latest version before opening an
   issue.
 - |VectorCode-installation|
+    - |VectorCode-mason.nvim|
     - |VectorCode-nix|
 - |VectorCode-integrations|
 - |VectorCode-configuration|
@@ -92,6 +93,13 @@ you can use the following plugin spec:
 
   This plugin is developed and tested on neovim _v0.11_. It may work on older
   versions, but I do not test on them before publishing.
+
+MASON.NVIM ~
+
+The VectorCode CLI and LSP server are available in `mason.nvim`. If you choose
+to install the CLI through mason, you may need to pay extra attention to the
+version pinning because the package updates on mason usually takes extra time.
+
 
 NIX ~
 
@@ -171,13 +179,14 @@ async backend to use, currently either `"default"` or `"lsp"`. Default:
 `setup` is called. Supported keys: - `update`if `true`, the plugin will run
 `vectorcode update` on startup to update the embeddings; - `lsp`if `true`, the
 plugin will try to start the LSP server on startup so that you won’t need to
-wait for the server loading when making your first request. -
-`sync_log_env_var``boolean`. If true, this plugin will automatically set the
-`VECTORCODE_LOG_LEVEL` environment variable for LSP or cmd processes started
-within your neovim session when logging is turned on for this plugin. Use at
-caution because the non-LSP CLI write all logs to stderr, which _may_ make this
-plugin VERY verbose. See |VectorCode-debugging-and-logging| for details on how
-to turn on logging.
+wait for the server loading when making your first request. _Please pay extra
+attention on lazy-loading so that the LSP server won’t be started without a
+buffer to be attached to (see here)._ - `sync_log_env_var``boolean`. If true,
+this plugin will automatically set the `VECTORCODE_LOG_LEVEL` environment
+variable for LSP or cmd processes started within your neovim session when
+logging is turned on for this plugin. Use at caution because the non-LSP CLI
+write all logs to stderr, which _may_ make this plugin VERY verbose. See
+|VectorCode-debugging-and-logging| for details on how to turn on logging.
 
 You may notice that a lot of options in `async_opts` are the same as the other
 options in the top-level of the main option table. This is because the

@@ -12,6 +12,7 @@
 <!-- mtoc-start -->
 
 * [Installation](#installation)
+  * [Mason.nvim ](#masonnvim-)
   * [Nix](#nix)
 * [Integrations](#integrations)
 * [Configuration](#configuration)
@@ -79,6 +80,12 @@ you can use the following plugin spec:
 
 > This plugin is developed and tested on neovim _v0.11_. It may work on older
 > versions, but I do not test on them before publishing.
+
+### Mason.nvim 
+
+The VectorCode CLI and LSP server are available in `mason.nvim`. If you choose to
+install the CLI through mason, you may need to pay extra attention to the version 
+pinning because the package updates on mason usually takes extra time.
 
 ### Nix
 
@@ -159,7 +166,8 @@ The following are the available options for the parameter of this function:
     update the embeddings;
   - `lsp`: if `true`, the plugin will try to start the LSP server on startup so
     that you won't need to wait for the server loading when making your first 
-    request.
+    request. _Please pay extra attention on lazy-loading so that the LSP server
+    won't be started without a buffer to be attached to (see [here](https://github.com/Davidyz/VectorCode/pull/234))._
 - `sync_log_env_var`: `boolean`. If true, this plugin will automatically set the
   `VECTORCODE_LOG_LEVEL` environment variable for LSP or cmd processes started
   within your neovim session when logging is turned on for this plugin. Use at 
