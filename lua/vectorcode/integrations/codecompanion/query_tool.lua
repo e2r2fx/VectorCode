@@ -156,26 +156,26 @@ local process_result = function(result)
 end
 
 ---@alias chat_id integer
----@alias result_id string
----@type <chat_id: result_id>
+---@alias results table<string,boolean>
+---@type table<chat_id, results>
 local result_tracker = {}
 
 ---@param results VectorCode.QueryResult[]
 ---@param chat CodeCompanion.Chat
 ---@return VectorCode.QueryResult[]
 local filter_results = function(results, chat)
-  local existing_refs = chat.refs or {}
+  local existing_refs = chat.context_items or chat.refs or {}
 
   existing_refs = vim
     .iter(existing_refs)
     :filter(
-      ---@param ref CodeCompanion.Chat.Ref
+      ---@param ref CodeCompanion.Chat.ContextItem
       function(ref)
         return ref.source == cc_common.tool_result_source or ref.path or ref.bufnr
       end
     )
     :map(
-      ---@param ref CodeCompanion.Chat.Ref
+      ---@param ref CodeCompanion.Chat.ContextItem
       function(ref)
         if ref.source == cc_common.tool_result_source then
           return ref.id
@@ -345,6 +345,7 @@ return check_cli_wrap(function(opts)
           "CodeCompanion query tool called with the following arguments:\n",
           action
         )
+
         job_runner = cc_common.initialise_runner(opts.use_lsp)
         assert(job_runner ~= nil, "Jobrunner not initialised!")
         assert(
@@ -386,10 +387,12 @@ return check_cli_wrap(function(opts)
           end
         end
 
-        if opts.no_duplicate and agent.chat.refs ~= nil and action.deduplicate then
+        -- TODO: remove the `chat.refs` compatibility code when the upstream PR is released.
+        local context_items = agent.chat.context_items or agent.chat.refs
+        if opts.no_duplicate and context_items ~= nil and action.deduplicate then
           -- exclude files that has been added to the context
           local existing_files = { "--exclude" }
-          for _, ref in pairs(agent.chat.refs) do
+          for _, ref in pairs(context_items) do
             if ref.source == cc_common.tool_result_source then
               table.insert(existing_files, ref.id)
             elseif type(ref.path) == "string" then
@@ -594,9 +597,10 @@ DO NOT MODIFY UNLESS INSTRUCTED BY THE USER, OR A PREVIOUS QUERY RETURNED NO RES
           string.format("**VectorCode Tool**: Retrieved %d %s(s)", stdout.count, mode)
         )
         if not opts.chunk_mode then
+          local context = agent.chat.context or agent.chat.references
           for _, result in pairs(stdout.raw_results) do
             -- skip referencing because there will be multiple chunks with the same path (id).
-            agent.chat.references:add({
+            context:add({
               source = cc_common.tool_result_source,
               id = result.path,
               path = result.path,
